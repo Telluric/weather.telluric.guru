@@ -1,9 +1,9 @@
+import './SensorToggles.css';
 import Button from "@material-ui/core/Button";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import ButtonGroup from "@material-ui/core/ButtonGroup";
-import {useEffect, useState} from "react";
-import {onWeatherUpdate, getRangeSelection} from "../util/db";
-import {subDays} from "date-fns";
+import {useEffect, useLayoutEffect, useState} from "react";
+import {getCurrentData, onUpdate} from "../util/db";
 
 function getNames(data) {
     console.debug('SensorToggle => Get Names:', data)
@@ -13,7 +13,7 @@ function getNames(data) {
     })
 }
 
-export function SensorToggle({name, data, onSensorToggled}) {
+export function SensorToggle({state, name, data, onSensorToggled}) {
     console.debug('SensorToggle => Running...');
 
     const emoji = {
@@ -23,9 +23,10 @@ export function SensorToggle({name, data, onSensorToggled}) {
         gas: "☠️",
         altitude: "🧭",
         sea_level_pressure: "⬇️",
+        windSpeed: "💨️",
     }
     const _onSensorToggled = (e)=>{
-        console.debug('SensorToggle => On Click:', name)
+        console.log('SensorToggle => On Click:', name)
         onSensorToggled(e, name)
     }
     return (
@@ -33,6 +34,7 @@ export function SensorToggle({name, data, onSensorToggled}) {
             onClick={_onSensorToggled}
             key={name}
             color="inherit"
+            className={`action-button-${state}`}
             variant="text"
         >
             {emoji[name]} {data[name]}
@@ -41,8 +43,7 @@ export function SensorToggle({name, data, onSensorToggled}) {
 }
 
 
-
-export default function SensorToggles({db, onSensorToggled}) {
+export default function SensorToggles({db, names, onSensorToggled}) {
     console.debug('SensorToggles => Running...')
     /**
      * Latest Data from Changes Feed
@@ -52,41 +53,33 @@ export default function SensorToggles({db, onSensorToggled}) {
         "pressure": NaN,
         "humidity": NaN,
         "gas": NaN,
-        "altitude": NaN
+        "altitude": NaN,
+        "windSpeed": NaN,
     });
     const [realtime] = useState(true)
+    useLayoutEffect(()=>{
+        async function load(){
+            setData(await getCurrentData(db));
+        }
+        load();
+    }, [db])
 
-    useEffect(function weatherEffect(){
-        console.debug(`SensorToggles => Database Weather Effect ${subDays(Date.now(), 1).getTime()}`);
-        let range = [subDays(Date.now(), 1).getTime(), Date.now()]
-        let names = ['temperature', 'pressure', 'humidity', 'gas', 'altitude']
-        getRangeSelection({range, names}, (d)=>{
-            console.debug('DAATA',d)
-            setData({
-                "temperature": Math.round(d[0][0].sum/d[0][0].count),
-                "pressure": Math.round(d[1][0].sum/d[1][0].count),
-                "humidity": Math.round(d[2][0].sum/d[2][0].count),
-                "gas": Math.round(d[3][0].sum/d[3][0].count),
-                "altitude": Math.round(d[4][0].sum/d[4][0].count)
-            })
-        })
+    useEffect(()=>{
+        console.log(`SensorToggles => Database Weather Effect`);
 
-        return onWeatherUpdate(db, function onLiveChange(c) {
-            console.debug(`SensorToggles => Database Update`, c);
-            if(realtime || isNaN(data.altitude)){
-                console.debug(`SensorToggles => Database Realtime`, c);
-                setData(Object.keys(c.doc).reduce((d,key) => {
-                    d[key] = Math.round(c.doc[key])
-                    return d;
-                }, {}));
+        return onUpdate(db, function onLiveChange(doc) {
+            console.log(`SensorToggles => Database Update`, doc);
+            if(realtime){
+                console.log(`SensorToggles => Database is Realtime, updating....`);
+                setData(doc);
             }
 
         })
-    }, [db, realtime, data.altitude]);
+    }, [db, realtime]);
 
     const toggles = () => getNames(data).map(
         (name, index) => <SensorToggle
-            key={index} name={name} data={data} onSensorToggled={onSensorToggled}
+           state={names.includes(name) ? "enabled" : "disabled"} key={index} name={name} data={data} onSensorToggled={onSensorToggled}
         />)
     return (
         !isNaN(data.altitude) ?

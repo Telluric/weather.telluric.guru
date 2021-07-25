@@ -58,11 +58,17 @@ export default function DateRangeSelector({onSubmit = console.debug ,minDate}) {
     const [_transitionDuration, setTransitionDuration] = useState(100)
     // Update Period
     useEffect(() => {
+        console.log(intervalToDuration(_interval))
+        console.log('Period Changed in Date Selector', durationToPeriod(intervalToDuration(_interval)))
         setPeriod(durationToPeriod(intervalToDuration(_interval)))
     }, [_interval])
 
     // Update Interval
     useEffect(() => {
+        console.log("interval update", {
+            start: _startDate,
+            end: _endDate,
+        })
         setInterval({
             start: _startDate,
             end: _endDate,
@@ -145,7 +151,7 @@ export default function DateRangeSelector({onSubmit = console.debug ,minDate}) {
                         onClick={
                             (e) => {
 
-                                onSubmit({start: _startDate, end: _endDate, period: _period})
+                                onSubmit({interval:{start: _startDate, end: _endDate}, period: _period})
                                 setFastOpen(false)
                             }
                         }

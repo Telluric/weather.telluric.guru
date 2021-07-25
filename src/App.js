@@ -1,15 +1,18 @@
 import './App.css';
-import {useEffect, useState, Fragment} from "react";
-import {WeatherFooter, WeatherToolbar} from "./components/Controls";
+import {useEffect, useLayoutEffect, useState} from "react";
+
 import Chart from 'react-apexcharts'
-import {getRangeSelection} from "./util/db";
-import {eachPeriodOfInterval} from "./util/time";
+import CircularProgress from "@material-ui/core/CircularProgress";
+import useMediaQuery from "@material-ui/core/useMediaQuery";
+
+import {WeatherFooter, WeatherToolbar} from "./components/Controls";
+
+import {findMinStartDate, request} from "./util/db";
 import {getTime, subDays} from "date-fns";
 
-import {CircularProgress, Button} from "@material-ui/core";
+
 import {useTheme} from "@material-ui/core/styles";
-import useMediaQuery from "@material-ui/core/useMediaQuery";
-import * as serviceWorker from "./serviceWorkerRegistration";
+
 import * as ApexCharts from "apexcharts";
 console.debug('App => Loading...')
 
@@ -17,7 +20,6 @@ console.debug('App => Loading...')
 /**
  * Two Axes Weather Chart
  * @param db
- * @param options
  * @returns {JSX.Element}
  * @constructor
  */
@@ -167,12 +169,132 @@ export default function WeatherApp({db}) {
         getDocs();
     }, [db])
 
+    const [minDate, setMinDate] = useState(getTime(subDays(Date.now(), 1)));
+
+    const [_names, setNames] = useState(['temperature', 'humidity']);
+
+    useEffect(()=>{
+        console.log('Names Change', _names)
+        console.log('')
+        if(interval && interval.start){
+                // console.log({
+                //     names: [name],
+                //     interval,
+                //     period:_period
+                // })
+                handleDateIntervalSubmitted({
+                    names: _names,
+                    interval,
+                    period:_period
+                })
+            }
+    }, [_names])
 
     // STUB for Sensors
-    const onSensorToggled = () => console.log;
-    // STUB for Realtime Toggle
-    const onSyncToggled = () => console.log;
+    const onSensorToggled = (e, name) => {
+        console.log(`App => Sensor ${name} toggled!`, interval, _period)
+        let state = Array.from(_names)
+        if(state.includes(name)){
+            console.log('Clicked is the same as the last click Names:', _names)
+            state.splice(state.indexOf(name), 1)
+            console.log('Clicked is the same as the last click Names:', state)
+        } else if (state.length < 2) {
+            state.push(name)
+        } else if (state.length === 2){
+            state.shift()
+            state.push(name)
+        }
 
+        setNames(state)
+        // setClicked(name);
+        //
+    };
+    // STUB for Realtime Toggle
+    const onSyncToggled = console.log;
+
+    // await request({names: ['temperature', 'humidity'], period, interval:{start,end}})
+    const [options] = useState({
+        chart: {
+            id: 'realtime',
+            type: 'line',
+        },
+        stroke: {
+            curve: 'smooth',
+        },
+        markers: {
+            size: 5,
+        },
+        tooltip: {
+            x: {
+                show: true,
+                format: 'MMM dd \'yy hh:mm TT',
+            },
+            // custom: function({ seriesIndex, dataPointIndex, w }) {
+            //     let o = w.globals.seriesCandleO[seriesIndex][dataPointIndex]
+            //     let h = w.globals.seriesCandleH[seriesIndex][dataPointIndex]
+            //     let l = w.globals.seriesCandleL[seriesIndex][dataPointIndex]
+            //     let c = w.globals.seriesCandleC[seriesIndex][dataPointIndex]
+            //     return (
+            //         `O:${o} H:${h} L:${l} C:${c}`
+            //     )
+            // }
+        },
+        xaxis: {
+            type: 'datetime'
+        },
+        // yaxis: [{
+        //     // opposite:false,
+        // },{
+        //     opposite:true,
+        // }, ]
+
+    })
+    const [series, setSeries] = useState()
+    const [interval, setInterval] = useState()
+    const [_period, setPeriod] = useState('hour')
+    const handleDateIntervalSubmitted = ({names, interval, period}) => {
+        setIsLoading(true)
+        setInterval(interval)
+        return request({names, period, interval})
+            .then((x)=>{
+                console.log(x);
+                setSeries(x)
+            })
+            .then(()=>setIsLoading(false))
+            .then(()=>{
+                setPeriod(period)
+                // ApexCharts.exec('realtime', 'updateOptions', {
+                //     chart: {type: 'line'},
+                //     // yaxis: names.map((name,index)=>{
+                //     //     return {
+                //     //         opposite: index % 2 === 0,
+                //     //         title:{
+                //     //             text: name
+                //     //         }
+                //     //     }
+                //     // })
+                // })
+
+            })
+    }
+
+    useEffect (()=>{
+        async function initLoad(){
+            setIsLoading(true)
+
+            let min = await findMinStartDate(db)
+
+            setMinDate(min);
+            setInterval({start: getTime(subDays(Date.now(), 1)), end: Date.now()})
+            await handleDateIntervalSubmitted({
+                names: _names,
+                interval: {start: getTime(subDays(Date.now(), 1)), end: Date.now()},
+                period:_period,
+            });
+        }
+
+        initLoad();
+    },[db])
     // Theme Controls
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -180,9 +302,11 @@ export default function WeatherApp({db}) {
         <div className="weather-station-controls">
             <WeatherToolbar
                 db={db}
+                names={_names}
+                minDate={minDate}
                 onSensorToggled={onSensorToggled}
                 onSyncToggled={onSyncToggled}
-                onSubmit={onDateRangeSubmitted}
+                onSubmit={({interval, period})=>handleDateIntervalSubmitted({names:_names, interval, period})}
             >
 
             </WeatherToolbar>

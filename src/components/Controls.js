@@ -29,7 +29,7 @@ const useStyles = makeStyles((theme) => ({
     },
 }));
 
-export function WeatherToolbar({db, onSyncToggled, onSensorToggled, minDate, onSubmit}) {
+export function WeatherToolbar({db, onSyncToggled, onSensorToggled, names, minDate, onSubmit}) {
     console.debug('WeatherToolbar => Running...')
     console.debug('ButtonAppBar => Running...');
     const theme = useTheme();
@@ -56,6 +56,7 @@ export function WeatherToolbar({db, onSyncToggled, onSensorToggled, minDate, onS
                 <DateRangeSelector minDate={minDate} onSubmit={onSubmit}/>
                 {((isMedium && !isMobile) || !isMedium) && <SensorToggles
                     db={db}
+                    names={names}
                     onSensorToggled={onSensorToggled}
                 />}
             </Toolbar>
@@ -64,13 +65,14 @@ export function WeatherToolbar({db, onSyncToggled, onSensorToggled, minDate, onS
 }
 
 
-export function WeatherFooter({db, onSensorToggled}) {
+export function WeatherFooter({db, onSensorToggled, names}) {
     const classes = useStyles();
     return (
         <BottomNavigation color="accent" className={classes.stickToBottom}>
             <SensorToggles
                 db={db}
                 onSensorToggled={onSensorToggled}
+                names={names}
             />
         </BottomNavigation>
     )

@@ -1,4 +1,4 @@
-require('dotenv').config({path: './.env.local'})
+require('dotenv').config({path: './.env.development.local'})
 const fs = require('fs');
 const path = require('path');
 const mime = require('mime');

@@ -19,7 +19,7 @@ const eachOfIntervalMap ={
     year: eachYearOfInterval,
 }
 
-export function eachPeriodOfInterval(period, interval){
+export function intervalToRange({period="hour", interval}){
     return eachOfIntervalMap[period](interval).map(getTime)
 }
 export function isEqualInterval(a,b){
@@ -29,10 +29,10 @@ export function isEqualInterval(a,b){
     )
 }
 export function durationToPeriod (duration) {
-    console.debug('Util/Time => Duration To Period:', duration)
+    console.log('Util/Time => Duration To Period:', duration)
     let _period;
     if(duration.years > 0){
-        if(duration.years > 20){
+        if(duration.years > 1){
             _period = 'year'
         } else {
             _period = 'quarter'
@@ -42,7 +42,7 @@ export function durationToPeriod (duration) {
     } else if (duration.weeks > 0){
         _period = 'day'
     } else if (duration.days > 0){
-        if(duration.days > 7){
+        if(duration.days > 1){
             _period = 'day'
         }else {
             _period = 'hour'
@@ -54,7 +54,42 @@ export function durationToPeriod (duration) {
         _period = 'second'
     }
 
-    if(typeof _period === 'undefined') throw new Error('No Period Found for Duration');
+    if(typeof _period === 'undefined') {
+        _period = 'hour'
+    };
     return _period;
 
 }
+
+
+export function periodIntervalsFromInterval (period, interval){
+    console.log(...arguments)
+    return eachOfIntervalMap[period](interval)
+        .map(getTime)
+        .reduce((res, next, index, dates) => {
+            res.keys.push(next);
+            if(typeof dates[index+1] !== 'undefined')
+                res.intervals.push({start: next, end: dates[index+1]})
+            return res;
+        }, {period, keys:[], intervals: []})
+    // return {
+    //     period,
+    //     keys: ,
+    //     intervals: [{start: Date, end: Date}],
+    // }
+}
+
+
+
+// Time range has two options
+// One: Select each period within a time range to aggregate on. For instance an hour period for a day interval will return
+//      24 dates/times on the top of every hour.
+// Two: Selected time range will not aggregate
+// Returns: array of intervals
+// const tmp = {
+//     period: 'hour',
+//     keys: [Date],
+//     intervals: [{start: Date, end: Date}],
+// }
+//
+// }
